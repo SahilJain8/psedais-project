@@ -8,6 +8,7 @@ class Service(models.Model):
     image = models.ImageField(upload_to='service_images/', null=True)
     duration = models.DurationField()
 
+
     def __str__(self):
         return self.name
 class Branch(models.Model):
@@ -47,8 +48,11 @@ class Appointment(models.Model):
     cancel_time = models.TimeField(null=True, blank=True)
     cancellation_fee = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     total_price = MoneyField(max_digits=14, decimal_places=2, default_currency='AED',null = True)
+    discounted_price = MoneyField(max_digits=12,decimal_places=2,default_currency='AED',null = True)
+    amount_to_be_paid = MoneyField(max_digits=14,decimal_places=2,default_currency='AED',null = True)
     date = models.DateField(null=True)
     branch = models.ForeignKey('Branch', on_delete=models.PROTECT,null=True)
+    tips = MoneyField(max_digits=12,decimal_places=2,default_currency='AED',default=0.00)
     def __str__(self):
 
         
