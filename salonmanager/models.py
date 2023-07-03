@@ -38,6 +38,25 @@ class Customer(models.Model):
 
     def __str__(self):
         return self.name
+# class Appointment(models.Model):
+#     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
+#     staff_member = models.ForeignKey(StaffMember, on_delete=models.PROTECT)
+#     services = models.ManyToManyField(Service)
+#     start_time = models.TimeField()
+#     end_time = models.TimeField()
+#     status = models.CharField(max_length=220, null=True)
+#     cancel_time = models.TimeField(null=True, blank=True)
+#     cancellation_fee = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+#     total_price = MoneyField(max_digits=14, decimal_places=2, default_currency='AED',null = True)
+#     discounted_price = MoneyField(max_digits=12,decimal_places=2,default_currency='AED',null = True)
+#     amount_to_be_paid = MoneyField(max_digits=14,decimal_places=2,default_currency='AED',null = True)
+#     date = models.DateField(null=True)
+#     branch = models.ForeignKey('Branch', on_delete=models.PROTECT,null=True)
+#     tips = MoneyField(max_digits=12,decimal_places=2,default_currency='AED',default=0.00)
+#     def __str__(self):
+
+        
+#         return f"{self.customer} - {self.services} with {self.staff_member} on {self.start_time}"
 class Appointment(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
     staff_member = models.ForeignKey(StaffMember, on_delete=models.PROTECT)
@@ -53,7 +72,7 @@ class Appointment(models.Model):
     date = models.DateField(null=True)
     branch = models.ForeignKey('Branch', on_delete=models.PROTECT,null=True)
     tips = MoneyField(max_digits=12,decimal_places=2,default_currency='AED',default=0.00)
-    def __str__(self):
+    def _str_(self):
 
         
         return f"{self.customer} - {self.services} with {self.staff_member} on {self.start_time}"
