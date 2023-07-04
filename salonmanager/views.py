@@ -5,8 +5,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from .models import StaffMember,Customer,Service,Branch,Appointment
-from .forms import ServiceForm,CustomerForm,StaffMemberForm,BranchForm
+from django.views import View
+from .models import StaffMember,Customer,Service,Branch,Appointment,Invoice
+
 from .utils import timeslot_gen_tf,calculate_end_time
 
 # Create your views here.
@@ -42,49 +43,12 @@ def manager_login(request):
 def manager_dashboard(request):
     return render(request,'base.html')
 
-
-
-
-def service_create(request):
-    if request.method == 'POST':
-        form = ServiceForm(request.POST, request.FILES)
-        if form.is_valid():
-            form.save()
-            
-    else:
-        form = ServiceForm()
-    return render(request, 'service_form.html', {'form': form})
-
-def customer_create(request):
-    if request.method == 'POST':
-        form = CustomerForm(request.POST)
-        if form.is_valid():
-            form.save()
-            
-    else:
-        form = CustomerForm()
-    return render(request, 'customer_form.html', {'form': form})
-
-def staff_member_create(request):
-    if request.method == 'POST':
-        form = StaffMemberForm(request.POST, request.FILES)
-        if form.is_valid():
-            form.save()
-    else:
-        form = StaffMemberForm()
-    return render(request, 'staff_form.html', {'form': form})
-
-def branch_create(request):
-    if request.method == 'POST':
-        form = BranchForm(request.POST)
-        if form.is_valid():
-            form.save()
-            
-    else:
-        form = BranchForm()
-    return render(request, 'branch_form.html', {'form': form})
-
 def appointment_booking(request):
+
+    """if request.method == 'POST':
+        selected_customer = request.POST.get('customer')
+        customer = get_object_or_404(Customer, id=selected_customer)
+    """
     time_slot_tf = timeslot_gen_tf('10:00 AM','10:00 PM')
     appointment_list=[]
     staff_members_list= StaffMember.objects.all()
@@ -220,6 +184,90 @@ def confirm_appointment(request):
         appointment.save()
     return redirect('appointment_booking')
 
+def payment_options(request,id=None,discount=0):
+    
+    
+    tax=0
+    app = Appointment.objects.all()
+    print(app)
+    if request.method =='POST':
+        appointment_id = request.POST.get('appointment_id')
+        appointment = get_object_or_404(Appointment, id = appointment_id)
+        tax = .05*appointment.total_price
+        price = appointment.total_price + tax
+    else:
+        appointment = get_object_or_404(Appointment,id = id)
+        if discount == 0:
+            tax = .05*appointment.total_price
+            price = appointment.total_price+tax
+        else:
+            tax = .05*appointment.discounted_price
+            price = appointment.discounted_price+tax
+        
+    services = appointment.services.all()
+    service_list = []
+    for service in services:
+        service_dict={
+            'name':service.name,
+            'price':service.price
+        }
+        service_list.append(service_dict)
+    
+    if appointment.tips == 0:
+        pass
+    else:
+        price = price+ appointment.tips
+    appointment_details = {
+        'appointment_id':appointment.id,
+        'customer': appointment.customer,
+        'total_price':price,
+        'tax':tax,
+        'tips':appointment.tips,
+        'services': service_list ,
+        'discount':discount}
+    print(appointment_details)
+    appointment.amount_to_be_paid = price
+    appointment.save()
+    
+    
+    return render(request,'make_payments.html',appointment_details)
+def add_discount(request,id):
+    appointment = get_object_or_404(Appointment,id = id)
+    if request.method =='POST':
+        discount = request.POST.get('discount')
+        print(discount)
+    price = appointment.total_price - appointment.total_price*discount*0.01
+    appointment.discounted_price = price
+    appointment.save()
+    
+    
+    return redirect('payment_options',id,discount)
+def add_tips(request,id):
+    appointment = get_object_or_404(Appointment,id = id)
+    if request.method =='POST':
+        tips = request.POST.get('tips')
+        print(tips)
+    appointment.tips=tips
+    appointment.save()
+        
+    return redirect('payment_options', id)
+
+def generate_invoice(request,id):
+    appointment = get_object_or_404(Appointment,id = id)
+    invoice = Invoice(appointment = appointment,discounted_price = appointment.discounted_price,tips = appointment.tips, price_to_be_paid = appointment.amount_to_be_paid)
+    invoice.save()
+    context={
+        'customer': appointment.customer,
+        'total_price':appointment.total_price,
+        'discounted_price':appointment.discounted_price,
+        'tips':appointment.tips,
+        'amount_to_be_paid': appointment.amount_to_be_paid,
+        
+    }
+    return render(request,'invoice.html',context)
+    
+    
+    
 def edit_appointment(request):
     return redirect('save_appointment')
 def move_appointment(request):
@@ -304,66 +352,230 @@ def change_date_branch(request):
     context = {'time_slots':time_slot_tf,'staff_members':staff_members_list,'branches':branches,'appointment_details_list':appointment_list,'date_chosen':date_chosen,
                'branch_chosen':chosen_branch}
     return render(request,'appointment_booking.html',context)
-def payment_options(request, id=None, discount = 0):
-    tax=0
-    app = Appointment.objects.all()
-    print(app)
-    if request.method =='POST':
-        appointment_id = request.POST.get('appointment_id')
-        appointment = get_object_or_404(Appointment, id = appointment_id)
-        tax = .05*appointment.total_price
-        price = appointment.total_price + tax
+
+
+from django.shortcuts import render, redirect
+from .models import Customer
+
+from django.shortcuts import render, redirect
+from .models import Customer
+
+"""def add_customer(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        phone_number = request.POST.get('phone_number')
+        email = request.POST.get('email')
+        profession = request.POST.get('profession')
+        address = request.POST.get('address')
+        customer = Customer(name=name, email=email, phone_number=phone_number, profession=profession, address=address)
+        customer.save()
+        return redirect('save_appointment')
+
+    return render(request, 'customer_create.html')
+"""
+
+
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import Customer
+from .forms import CustomerForm
+from django.contrib import messages
+
+def customer_list(request):
+    customers = Customer.objects.all()
+    return render(request, 'customer_list.html', {'customers': customers})
+
+def customer_detail(request, pk):
+    customer = get_object_or_404(Customer, pk=pk)
+    return render(request, 'customer_details.html', {'customer': customer})
+
+def customer_create(request):
+    if request.method == 'POST':
+        form = CustomerForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('customer_list')
     else:
-        appointment = get_object_or_404(Appointment,id = id)
-        if discount == 0:
-            tax = .05*appointment.total_price
-            price = appointment.total_price+tax
+        form = CustomerForm()
+    return render(request, 'customer_create.html', {'form': form})
+
+def customer_update(request, pk):
+    customer = get_object_or_404(Customer, pk=pk)
+    if request.method == 'POST':
+        form = CustomerForm(request.POST, instance=customer)
+        if form.is_valid():
+            form.save()
+            return redirect('customer_detail', pk=customer.pk)
+    else:
+        form = CustomerForm(instance=customer)
+    return render(request, 'customer_update.html', {'form': form, 'customer': customer})
+
+def customer_delete(request, pk):
+    customer = get_object_or_404(Customer, pk=pk)
+    if request.method == 'POST':
+        customer.delete()
+        return redirect('customer_list')
+    return render(request, 'customer_delete.html', {'customer': customer})
+
+def customer_search(request):
+    if request.method == 'GET':
+        query = request.GET.get('q')
+        if query:
+            customers = Customer.objects.filter(name__icontains=query)
         else:
-            tax = .05*appointment.discounted_price
-            price = appointment.discounted_price+tax
-        
-    services = appointment.services.all()
-    service_list = []
-    for service in services:
-        service_dict={
-            'name':service.name,
-            'price':service.price
-        }
-        service_list.append(service_dict)
-    
-    if appointment.tips == 0:
-        pass
+            customers = Customer.objects.all()
+        return render(request, 'customer_list.html', {'customers': customers})
+
+
+
+
+from .models import Branch
+from .forms import BranchForm
+
+def branch_list(request):
+    branches = Branch.objects.all()
+    return render(request, 'branch_list.html', {'branches': branches})
+
+def branch_detail(request, pk):
+    branch = Branch.objects.get(pk=pk)
+    return render(request, 'branch_details.html', {'branch': branch})
+
+def branch_create(request):
+    if request.method == 'POST':
+        form = BranchForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('branch_list')
     else:
-        price = price+ appointment.tips
-    appointment_details = {
-        'appointment_id':appointment.id,
-        'customer': appointment.customer,
-        'total_price':price,
-        'tax':tax,
-        'tips':appointment.tips,
-        'services': service_list ,
-        'discount':discount}
-    print(appointment_details)
-    
-    
-    return render(request,'make_payments.html',appointment_details)
-def add_discount(request,id):
-    appointment = get_object_or_404(Appointment,id = id)
-    if request.method =='POST':
-        discount = request.POST.get('discount')
-        print(discount)
-    price = appointment.total_price - appointment.total_price*discount*0.01
-    appointment.discounted_price = price
-    appointment.save()
-    
-    
-    return redirect('payment_options',id,discount)
-def add_tips(request,id):
-    appointment = get_object_or_404(Appointment,id = id)
-    if request.method =='POST':
-        tips = request.POST.get('tips')
-        print(tips)
-    appointment.tips=tips
-    appointment.save()
-        
-    return redirect('payment_options', id)
+        form = BranchForm()
+    return render(request, 'branch_create.html', {'form': form})
+
+def branch_update(request, pk):
+    branch = Branch.objects.get(pk=pk)
+    if request.method == 'POST':
+        form = BranchForm(request.POST, instance=branch)
+        if form.is_valid():
+            form.save()
+            return redirect('branch_detail',pk=branch.pk)
+    else:
+        form = BranchForm(instance=branch)
+    return render(request, 'branch_update.html', {'form': form, 'branch': branch})
+
+def branch_delete(request, pk):
+    branch = Branch.objects.get(pk=pk)
+    if request.method == 'POST':
+        branch.delete()
+        return redirect('branch_list')
+    return render(request, 'branch_delete.html', {'branch': branch})
+
+
+
+
+
+
+from .models import StaffMember
+from .forms import StaffMemberForm
+
+# StaffMember list
+def staff_member_list(request):
+    staff_members = StaffMember.objects.all()
+    return render(request, 'staff_member_list.html', {'staff_members': staff_members})
+
+# StaffMember detail
+def staff_member_detail(request, pk):
+    staff_member = get_object_or_404(StaffMember, pk=pk)
+    return render(request, 'staff_member_detail.html', {'staff_member': staff_member})
+
+
+# StaffMember create
+def staff_member_create(request):
+    if request.method == 'POST':
+        form = StaffMemberForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return redirect('staff_member_list')
+    else:
+        form = StaffMemberForm()
+    return render(request, 'staff_member_create.html', {'form': form})
+
+# StaffMember update
+def staff_member_update(request, pk):
+    staff_member = get_object_or_404(StaffMember, pk=pk)
+    if request.method == 'POST':
+        form = StaffMemberForm(request.POST, request.FILES, instance=staff_member)
+        if form.is_valid():
+            form.save()
+            return redirect('staff_member_list')
+    else:
+        form = StaffMemberForm(instance=staff_member)
+    return render(request, 'staff_member_update.html', {'form': form, 'staff_member': staff_member})
+
+# StaffMember delete
+def staff_member_delete(request, pk):
+    staff_member = get_object_or_404(StaffMember, pk=pk)
+    if request.method == 'POST':
+        staff_member.delete()
+        return redirect('staff_member_list')
+    return render(request, 'staff_member_delete.html', {'staff_member': staff_member})
+
+
+from django.db.models import Q
+
+def staff_member_search(request):
+    if request.method == 'GET':
+        query = request.GET.get('q')
+        if query:
+            staff_members = StaffMember.objects.filter(name__icontains=query)
+        else:
+            staff_members = StaffMember.objects.all()
+        return render(request, 'staff_member_list.html', {'staff_members': staff_members})
+
+
+
+from .models import Service
+from .forms import ServiceForm
+
+def service_list(request):
+    services = Service.objects.all()
+    return render(request, 'service_list.html', {'services': services})
+
+def service_create(request):
+    if request.method == 'POST':
+        form = ServiceForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            return redirect('service_list')
+    else:
+        form = ServiceForm()
+    return render(request, 'service_create.html', {'form': form})
+
+def service_detail(request, pk):
+    service = get_object_or_404(Service, pk=pk)
+    return render(request, 'service_detail.html', {'service': service})
+
+def service_update(request, pk):
+    service = get_object_or_404(Service, pk=pk)
+    if request.method == 'POST':
+        form = ServiceForm(request.POST, request.FILES, instance=service)
+        if form.is_valid():
+            form.save()
+            return redirect('service_detail', pk=service.pk)
+    else:
+        form = ServiceForm(instance=service)
+    return render(request, 'service_update.html', {'form': form, 'service': service})
+
+def service_delete(request, pk):
+    service = get_object_or_404(Service, pk=pk)
+    if request.method == 'POST':
+        service.delete()
+        return redirect('service_list')
+    return render(request, 'service_delete.html', {'service': service})
+
+
+def service_search(request):
+    if request.method == 'GET':
+        query = request.GET.get('q')
+        if query:
+            services = Service.objects.filter(name__icontains=query)
+        else:
+            services = Service.objects.all()
+        return render(request, 'service_list.html', {'services': services})

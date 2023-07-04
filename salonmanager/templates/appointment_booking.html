@@ -85,12 +85,7 @@
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
         background-color:aliceblue
       }
-      
-      .table-container {
-        max-height: 900px; /* Set a specific height for the table container */
-        overflow-y: auto; /* Enable vertical scrolling */
-    }
-    .sticky-header {
+      .sticky-header {
         position: sticky;
         top: 0;
         background-color: #f1f1f1;
@@ -100,11 +95,10 @@
 <div class="container">
   <div class="row">
    
-    <div class="col-md-10 table-container">
+    <div class="col-md-10">
       <table id = 'appointment-table'>
-
-        <thead class='sticky-header' >
-          <tr >
+        <thead class='sticky-header'>
+          <tr>
             <th>Time</th>
             {% for staff_member in staff_members %}
             <th>{{ staff_member.name }} <img src = "{{staff_member.image.url}}" class='staff_image'> </th>
@@ -113,7 +107,7 @@
         </thead>
         <tbody>
           {% for time_slot in time_slots %}
-        <tr class="short  ">
+        <tr class="short ">
           <th>{{ time_slot }}</th>
           
           {% for staff_member in staff_members %}

@@ -8,7 +8,6 @@ class Service(models.Model):
     image = models.ImageField(upload_to='service_images/', null=True)
     duration = models.DurationField()
 
-
     def __str__(self):
         return self.name
 class Branch(models.Model):
@@ -16,9 +15,9 @@ class Branch(models.Model):
     address = models.CharField(max_length=255)
     phone_number = models.CharField(max_length=20)
     email = models.EmailField()
-
     def __str__(self):
         return self.name
+    
 class StaffMember(models.Model):
     name = models.CharField(max_length=50)
     branches = models.ManyToManyField(Branch)
@@ -34,10 +33,18 @@ class Customer(models.Model):
     email = models.EmailField()
     profession = models.CharField(max_length=100,null=True)
     address = models.TextField()
-    
-
     def __str__(self):
         return self.name
+class Packages(models.Model):
+    name = models.CharField(max_length=100)
+    price = MoneyField(max_digits=14, decimal_places=2, default_currency='AED')
+    services = models.ManyToManyField(Service)
+    customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
+    
+    def __str__(self):
+        return self.name
+    
+
 class Appointment(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT)
     staff_member = models.ForeignKey(StaffMember, on_delete=models.PROTECT)
@@ -57,3 +64,14 @@ class Appointment(models.Model):
 
         
         return f"{self.customer} - {self.services} with {self.staff_member} on {self.start_time}"
+
+
+class Invoice(models.Model):
+    appointment = models.ForeignKey(Appointment, on_delete=models.PROTECT)
+    
+    tax = MoneyField(max_digits=14, decimal_places=2, default_currency='AED',null = True)
+    discounted_price = MoneyField(max_digits=14, decimal_places=2, default_currency='AED',null = True)
+    tips = MoneyField(max_digits=14, decimal_places=2, default_currency='AED',null = True)
+    price_to_be_paid = MoneyField(max_digits=14, decimal_places=2, default_currency='AED',null = True)
+    
+    
